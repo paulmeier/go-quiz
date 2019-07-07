@@ -13,7 +13,14 @@ import (
 
 func main() {
 	timePtr := flag.Int("timer", 30, "quiz timer")
+	filePtr := flag.String("file", "", "problems csv file")
 	flag.Parse()
+
+	if *filePtr == "" {
+		flag.PrintDefaults()
+		fmt.Println("No compatable quiz problem file found.")
+		os.Exit(1)
+	}
 
 	if (*timePtr <= 0) || (*timePtr >= 200) {
 		flag.PrintDefaults()
@@ -21,10 +28,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	csvData := openCSV(*filePtr)
 	ch := make(chan int)
 	m := make(map[string]int)
 
-	readCSV(m, "problems.csv")
+	csvToMap(m, csvData)
 	var rightAnswers, wrongAnswers, index int
 
 	go func() {
@@ -56,7 +64,7 @@ func main() {
 
 	select {
 	case <-ch:
-		fmt.Println("Finished all questions in time!")
+		fmt.Println("\n Finished all questions in time!")
 	case <-time.After(time.Duration(*timePtr) * time.Second):
 		fmt.Println("\n Times Up!")
 	}
@@ -65,7 +73,7 @@ func main() {
 	fmt.Printf("Score: %.2f%% %d/%d \n", (float64(rightAnswers)/float64(len(m)))*100, rightAnswers, len(m))
 }
 
-func readCSV(questions map[string]int, filename string) {
+func openCSV(filename string) *[][]string {
 	file, err := os.Open(filename)
 	if err != nil {
 		log.Fatal(err)
@@ -76,7 +84,11 @@ func readCSV(questions map[string]int, filename string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, line := range lines {
+	return &lines
+}
+
+func csvToMap(questions map[string]int, csvData *[][]string) {
+	for _, line := range *csvData {
 		answer, err := strconv.Atoi(line[1])
 		if err != nil {
 			log.Fatal(err)
